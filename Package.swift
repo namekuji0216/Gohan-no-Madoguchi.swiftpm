@@ -1,10 +1,10 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 5.5
 import PackageDescription
 
 let package = Package(
     name: "Test",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v15)
     ],
     products: [
         .iOSApplication(
@@ -13,8 +13,6 @@ let package = Package(
             bundleIdentifier: "com.example.Test",
             displayVersion: "1.0",
             bundleVersion: "1",
-            appIcon: .placeholder(icon: .star),
-            accentColor: .presetColor(.blue),
             supportedDeviceFamilies: [
                 .pad,
                 .phone
