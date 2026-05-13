@@ -130,7 +130,7 @@ private struct MoodTagChip: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
-                    isSelected ? Color.tint : Color(.systemGray5),
+                    isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(.systemGray5)),
                     in: Capsule()
                 )
                 .foregroundStyle(isSelected ? .white : .primary)
