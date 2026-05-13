@@ -4,13 +4,19 @@ import GoogleGenerativeAI
 enum GeminiError: LocalizedError {
     case invalidAPIKey
     case emptyResponse
+    case apiError(String)
     case networkError(Error)
 
     var errorDescription: String? {
         switch self {
-        case .invalidAPIKey:        return "APIキーが設定されていません。Sources/Secrets.swift を確認してください"
-        case .emptyResponse:        return "Gemini からの応答が空です"
-        case .networkError(let e): return "通信エラー: \(e.localizedDescription)"
+        case .invalidAPIKey:
+            return "APIキーが設定されていません。Sources/Secrets.swift を確認してください"
+        case .emptyResponse:
+            return "Gemini からの応答が空です"
+        case .apiError(let message):
+            return "Gemini APIエラー: \(message)"
+        case .networkError(let e):
+            return "通信エラー: \(e.localizedDescription)"
         }
     }
 }
@@ -18,12 +24,12 @@ enum GeminiError: LocalizedError {
 struct GeminiService {
     private let model: GenerativeModel
 
-    // モデル名は Config で一元管理
-    init(apiKey: String = Secrets.geminiAPIKey, modelName: String = "gemini-2.0-flash") {
+    // gemini-1.5-flash は無料枠で安定して使えるモデル
+    init(apiKey: String = Secrets.geminiAPIKey, modelName: String = "gemini-1.5-flash") {
+        // responseMIMEType はプロンプト側で指定するためここでは設定しない
         let config = GenerationConfig(
             temperature: 0.9,
-            maxOutputTokens: 2048,
-            responseMIMEType: "application/json"  // JSON を直接返させる
+            maxOutputTokens: 2048
         )
         model = GenerativeModel(
             name: modelName,
@@ -46,6 +52,9 @@ struct GeminiService {
             return text
         } catch let error as GeminiError {
             throw error
+        } catch let error as GenerateContentError {
+            // SDK のエラーを詳細なメッセージに変換
+            throw GeminiError.apiError(String(describing: error))
         } catch {
             throw GeminiError.networkError(error)
         }
