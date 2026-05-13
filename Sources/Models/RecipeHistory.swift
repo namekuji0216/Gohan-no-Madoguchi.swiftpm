@@ -8,12 +8,14 @@ final class RecipeHistory {
     var steps: [String]
     var rating: Int
     var createdAt: Date
+    var photoData: Data?
 
-    init(name: String, ingredients: [String], steps: [String], rating: Int, createdAt: Date = .now) {
+    init(name: String, ingredients: [String], steps: [String], rating: Int, createdAt: Date = .now, photoData: Data? = nil) {
         self.name = name
         self.ingredients = ingredients
         self.steps = steps
         self.rating = max(1, min(5, rating))
         self.createdAt = createdAt
+        self.photoData = photoData
     }
 }

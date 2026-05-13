@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 
 struct RecipeDetailView: View {
     let viewModel: MealSuggestionViewModel
@@ -8,6 +9,8 @@ struct RecipeDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var rating = 3
     @State private var saved = false
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var photoData: Data?
 
     var body: some View {
         ScrollView {
@@ -31,6 +34,14 @@ struct RecipeDetailView: View {
         }
         .navigationTitle(viewModel.selectedSuggestion?.name ?? "レシピ")
         .navigationBarTitleDisplayMode(.large)
+        .onChange(of: selectedPhoto) { _, newItem in
+            Task {
+                guard let data = try? await newItem?.loadTransferable(type: Data.self),
+                      let ui = UIImage(data: data),
+                      let jpeg = ui.jpegData(compressionQuality: 0.7) else { return }
+                photoData = jpeg
+            }
+        }
     }
 
     // MARK: - 材料
@@ -41,11 +52,9 @@ struct RecipeDetailView: View {
                 .font(.headline)
             ForEach(ingredients, id: \.self) { item in
                 HStack(alignment: .top, spacing: 8) {
-                    Text("・")
-                        .foregroundStyle(.secondary)
+                    Text("・").foregroundStyle(.secondary)
                     Text(item)
                 }
-                .font(.body)
             }
         }
     }
@@ -64,7 +73,6 @@ struct RecipeDetailView: View {
                         .frame(width: 26, height: 26)
                         .background(.tint, in: Circle())
                     Text(step)
-                        .font(.body)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -76,8 +84,30 @@ struct RecipeDetailView: View {
     private func saveSection(_ recipe: DetailedRecipe) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
-            Label("評価して保存", systemImage: "star")
+
+            // 写真
+            Label("写真（任意）", systemImage: "photo")
                 .font(.headline)
+
+            if let data = photoData, let ui = UIImage(data: data) {
+                Image(uiImage: ui)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 200)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+
+            PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                Label(photoData == nil ? "写真を追加" : "写真を変更", systemImage: "photo.badge.plus")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+
+            // 評価
+            Label("評価", systemImage: "star")
+                .font(.headline)
+
             HStack(spacing: 4) {
                 ForEach(1...5, id: \.self) { star in
                     Image(systemName: star <= rating ? "star.fill" : "star")
@@ -86,13 +116,14 @@ struct RecipeDetailView: View {
                         .onTapGesture { rating = star }
                 }
             }
+
             Button {
                 saveRecipe(recipe)
             } label: {
                 Label(saved ? "保存済み" : "履歴に保存", systemImage: saved ? "checkmark" : "square.and.arrow.down")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.bordered)
+            .buttonStyle(.borderedProminent)
             .controlSize(.large)
             .disabled(saved)
         }
@@ -103,7 +134,8 @@ struct RecipeDetailView: View {
             name: recipe.name,
             ingredients: recipe.ingredients,
             steps: recipe.steps,
-            rating: rating
+            rating: rating,
+            photoData: photoData
         )
         modelContext.insert(history)
         saved = true
