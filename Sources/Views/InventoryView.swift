@@ -140,7 +140,7 @@ private struct PresetChip: View {
                     isAdded ? AnyShapeStyle(.tint.opacity(0.15)) : AnyShapeStyle(Color(.systemGray6)),
                     in: RoundedRectangle(cornerRadius: 8)
                 )
-                .foregroundStyle(isAdded ? .tint : .primary)
+                .foregroundStyle(isAdded ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
                 .overlay(alignment: .topTrailing) {
                     if isAdded {
                         Image(systemName: "checkmark.circle.fill")
