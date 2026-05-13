@@ -25,7 +25,7 @@ struct GeminiService {
     private let model: GenerativeModel
 
     // gemini-1.5-flash は無料枠で安定して使えるモデル
-    init(apiKey: String = Secrets.geminiAPIKey, modelName: String = "gemini-1.5-flash") {
+    init(apiKey: String = Secrets.geminiAPIKey, modelName: String = "gemini-2.5-flash") {
         // responseMIMEType はプロンプト側で指定するためここでは設定しない
         let config = GenerationConfig(
             temperature: 0.9,
