@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# Swift Playgrounds
+*.swp
+
+# APIキー（絶対にコミットしない）
+Sources/Secrets.swift

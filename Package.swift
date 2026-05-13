@@ -27,9 +27,18 @@ let package = Package(
             ]
         )
     ],
+    dependencies: [
+        .package(
+            url: "https://github.com/google/generative-ai-swift",
+            from: "0.5.0"
+        )
+    ],
     targets: [
         .executableTarget(
             name: "Test",
+            dependencies: [
+                .product(name: "GoogleGenerativeAI", package: "generative-ai-swift")
+            ],
             path: "Sources",
             swiftSettings: [
                 .enableUpcomingFeature("BareSlashRegexLiterals")

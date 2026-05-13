@@ -12,9 +12,9 @@ final class MealSuggestionViewModel {
     var isLoadingRecipe = false
     var errorMessage: String?
 
-    private let service = AnthropicService()
+    private let service = GeminiService()
 
-    // MARK: - 提案生成
+    // MARK: - 提案生成（5案）
 
     func generateSuggestions(pantryItems: [PantryItem]) async {
         isLoadingSuggestions = true
@@ -42,7 +42,7 @@ final class MealSuggestionViewModel {
 
         do {
             let prompt = buildRecipePrompt(dishName: suggestion.name, pantryItems: pantryItems)
-            let raw = try await service.send(prompt: prompt, maxTokens: 2048)
+            let raw = try await service.send(prompt: prompt)
             detailedRecipe = try parseDetailedRecipe(from: raw)
         } catch {
             errorMessage = error.localizedDescription
@@ -63,7 +63,7 @@ final class MealSuggestionViewModel {
 
         return """
         あなたは家庭料理の献立提案アシスタントです。
-        以下の食材と気分を元に、今日の献立案を5つ提案してください。
+        以下の食材と気分をもとに、今日の献立案を**5つ**提案してください。
 
         【冷蔵庫・パントリーの食材】
         \(ingredientList)
@@ -71,11 +71,14 @@ final class MealSuggestionViewModel {
         【気分・食べたいもの】
         \(moodText)
 
-        以下のJSON配列のみを返してください。説明文や前置きは不要です。
+        以下のJSON配列**のみ**を返してください。前置きや説明文は不要です。
         [
-          {"name": "料理名", "description": "料理の短い説明（1〜2文）"},
-          ...
+          {
+            "name": "料理名（日本語）",
+            "description": "その料理の短い説明（1〜2文、食欲をそそる表現で）"
+          }
         ]
+        要素は必ず5つにしてください。
         """
     }
 
@@ -90,12 +93,18 @@ final class MealSuggestionViewModel {
         【手元にある食材】
         \(ingredientList)
 
-        手元にない食材があれば材料リストに含めてください。
-        以下のJSONのみを返してください。説明文や前置きは不要です。
+        手元にない食材も材料リストに含めてください（買い物の参考にします）。
+        以下のJSON**のみ**を返してください。前置きや説明文は不要です。
         {
           "name": "料理名",
-          "ingredients": ["材料1（分量）", "材料2（分量）"],
-          "steps": ["手順1", "手順2"]
+          "ingredients": [
+            "材料名（分量）",
+            "材料名（分量）"
+          ],
+          "steps": [
+            "手順1の説明",
+            "手順2の説明"
+          ]
         }
         """
     }
@@ -103,17 +112,17 @@ final class MealSuggestionViewModel {
     // MARK: - レスポンスパース
 
     private func parseMenuSuggestions(from text: String) throws -> [MenuSuggestion] {
-        let jsonString = extractJSON(from: text, kind: .array)
-        guard let data = jsonString.data(using: .utf8) else {
-            throw AnthropicError.decodingError("文字列変換失敗")
+        let json = extractJSON(from: text, kind: .array)
+        guard let data = json.data(using: .utf8) else {
+            throw GeminiError.emptyResponse
         }
         return try JSONDecoder().decode([MenuSuggestion].self, from: data)
     }
 
     private func parseDetailedRecipe(from text: String) throws -> DetailedRecipe {
-        let jsonString = extractJSON(from: text, kind: .object)
-        guard let data = jsonString.data(using: .utf8) else {
-            throw AnthropicError.decodingError("文字列変換失敗")
+        let json = extractJSON(from: text, kind: .object)
+        guard let data = json.data(using: .utf8) else {
+            throw GeminiError.emptyResponse
         }
         return try JSONDecoder().decode(DetailedRecipe.self, from: data)
     }
