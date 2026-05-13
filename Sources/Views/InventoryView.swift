@@ -6,29 +6,19 @@ struct InventoryView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var showingAddSheet = false
 
-    private var seasonings: [PantryItem] { items.filter { $0.type == .seasoning } }
-    private var ingredients: [PantryItem] { items.filter { $0.type == .ingredient } }
-
     var body: some View {
         NavigationStack {
             List {
-                if !seasonings.isEmpty {
-                    Section("調味料") {
-                        ForEach(seasonings) { item in
-                            Text(item.name)
-                        }
-                        .onDelete { offsets in
-                            delete(from: seasonings, at: offsets)
-                        }
-                    }
-                }
-                if !ingredients.isEmpty {
-                    Section("食材") {
-                        ForEach(ingredients) { item in
-                            Text(item.name)
-                        }
-                        .onDelete { offsets in
-                            delete(from: ingredients, at: offsets)
+                ForEach(PantryItemType.allCases, id: \.self) { type in
+                    let group = items.filter { $0.type == type }
+                    if !group.isEmpty {
+                        Section(header: Label(type.rawValue, systemImage: type.icon)) {
+                            ForEach(group) { item in
+                                Text(item.name)
+                            }
+                            .onDelete { offsets in
+                                for i in offsets { modelContext.delete(group[i]) }
+                            }
                         }
                     }
                 }
@@ -36,14 +26,10 @@ struct InventoryView: View {
             .navigationTitle("在庫管理")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("追加", systemImage: "plus") {
-                        showingAddSheet = true
-                    }
+                    Button("追加", systemImage: "plus") { showingAddSheet = true }
                 }
                 if !items.isEmpty {
-                    ToolbarItem(placement: .topBarLeading) {
-                        EditButton()
-                    }
+                    ToolbarItem(placement: .topBarLeading) { EditButton() }
                 }
             }
             .overlay {
@@ -60,12 +46,6 @@ struct InventoryView: View {
             }
         }
     }
-
-    private func delete(from list: [PantryItem], at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(list[index])
-        }
-    }
 }
 
 // MARK: - 追加シート
@@ -73,46 +53,104 @@ struct InventoryView: View {
 private struct AddPantryItemView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query private var existingItems: [PantryItem]
 
-    @State private var name = ""
-    @State private var type: PantryItemType = .ingredient
-    @FocusState private var nameFocused: Bool
+    @State private var selectedType: PantryItemType = .vegetable
+    @State private var customName = ""
+    @FocusState private var customFocused: Bool
+
+    private var registeredNames: Set<String> {
+        Set(existingItems.map(\.name))
+    }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("名前") {
-                    TextField("例：玉ねぎ、醤油…", text: $name)
-                        .focused($nameFocused)
+            VStack(spacing: 0) {
+                // カテゴリ選択
+                Picker("種類", selection: $selectedType) {
+                    ForEach(PantryItemType.allCases, id: \.self) { t in
+                        Text(t.rawValue).tag(t)
+                    }
                 }
-                Section("種類") {
-                    Picker("種類", selection: $type) {
-                        ForEach(PantryItemType.allCases, id: \.self) { t in
-                            Text(t.rawValue).tag(t)
+                .pickerStyle(.segmented)
+                .padding()
+
+                List {
+                    // プリセット一覧
+                    Section("よく使う食材をタップで追加") {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 8) {
+                            ForEach(selectedType.presets, id: \.self) { preset in
+                                let added = registeredNames.contains(preset)
+                                PresetChip(name: preset, isAdded: added) {
+                                    if !added {
+                                        modelContext.insert(PantryItem(name: preset, type: selectedType))
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    // 手動入力
+                    Section("手動で追加") {
+                        HStack {
+                            TextField("名前を入力…", text: $customName)
+                                .focused($customFocused)
+                                .submitLabel(.done)
+                                .onSubmit(saveCustom)
+                            Button("追加", action: saveCustom)
+                                .disabled(customName.trimmingCharacters(in: .whitespaces).isEmpty)
                         }
                     }
-                    .pickerStyle(.segmented)
                 }
             }
             .navigationTitle("食材を追加")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("キャンセル") { dismiss() }
-                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("追加") { save() }
-                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    Button("閉じる") { dismiss() }
                 }
             }
-            .onAppear { nameFocused = true }
         }
     }
 
-    private func save() {
-        let trimmed = name.trimmingCharacters(in: .whitespaces)
+    private func saveCustom() {
+        let trimmed = customName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        modelContext.insert(PantryItem(name: trimmed, type: type))
-        dismiss()
+        modelContext.insert(PantryItem(name: trimmed, type: selectedType))
+        customName = ""
+    }
+}
+
+// MARK: - プリセットチップ
+
+private struct PresetChip: View {
+    let name: String
+    let isAdded: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(name)
+                .font(.subheadline)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    isAdded ? AnyShapeStyle(.tint.opacity(0.15)) : AnyShapeStyle(Color(.systemGray6)),
+                    in: RoundedRectangle(cornerRadius: 8)
+                )
+                .foregroundStyle(isAdded ? .tint : .primary)
+                .overlay(alignment: .topTrailing) {
+                    if isAdded {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.tint)
+                            .offset(x: 4, y: -4)
+                    }
+                }
+        }
+        .buttonStyle(.plain)
+        .disabled(isAdded)
     }
 }
