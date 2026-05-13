@@ -62,7 +62,7 @@ struct RecipeDetailView: View {
                         .font(.callout.bold())
                         .foregroundStyle(.white)
                         .frame(width: 26, height: 26)
-                        .background(.accentColor, in: Circle())
+                        .background(.tint, in: Circle())
                     Text(step)
                         .font(.body)
                         .fixedSize(horizontal: false, vertical: true)

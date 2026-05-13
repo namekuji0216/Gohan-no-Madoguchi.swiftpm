@@ -130,7 +130,7 @@ private struct MoodTagChip: View {
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
                 .background(
-                    isSelected ? Color.accentColor : Color(.systemGray5),
+                    isSelected ? Color.tint : Color(.systemGray5),
                     in: Capsule()
                 )
                 .foregroundStyle(isSelected ? .white : .primary)
@@ -150,7 +150,7 @@ private struct SuggestionCard: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "fork.knife.circle.fill")
                     .font(.title2)
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(suggestion.name)
                         .font(.body.bold())
