@@ -24,12 +24,12 @@ enum GeminiError: LocalizedError {
 struct GeminiService {
     private let model: GenerativeModel
 
-    // gemini-1.5-flash は無料枠で安定して使えるモデル
     init(apiKey: String = Secrets.geminiAPIKey, modelName: String = "gemini-2.5-flash") {
-        // responseMIMEType はプロンプト側で指定するためここでは設定しない
+        // gemini-2.5-flash は内部で thinking tokens を消費するため
+        // maxOutputTokens は余裕をもって 8192 に設定する
         let config = GenerationConfig(
             temperature: 0.9,
-            maxOutputTokens: 2048
+            maxOutputTokens: 8192
         )
         model = GenerativeModel(
             name: modelName,
@@ -53,7 +53,11 @@ struct GeminiService {
         } catch let error as GeminiError {
             throw error
         } catch let error as GenerateContentError {
-            // SDK のエラーを詳細なメッセージに変換
+            // responseStoppedEarly は部分レスポンスを持つ場合がある
+            if case .responseStoppedEarly(_, let partial) = error,
+               let text = partial.text, !text.isEmpty {
+                return text
+            }
             throw GeminiError.apiError(String(describing: error))
         } catch {
             throw GeminiError.networkError(error)
