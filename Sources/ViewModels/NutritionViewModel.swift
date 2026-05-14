@@ -25,8 +25,9 @@ final class NutritionViewModel {
             let prompt = buildPrompt(recipes: recipes)
             let raw = try await service.send(prompt: prompt, maxOutputTokens: 1024)
             analysis = try parseAnalysis(from: raw)
-        } catch GeminiError.rateLimited(let seconds) {
-            startCountdown(seconds: seconds)
+        } catch let e as GeminiError {
+            errorMessage = e.errorDescription
+            if case .rateLimited(let seconds, _) = e { startCountdown(seconds: seconds) }
         } catch {
             errorMessage = error.localizedDescription
         }

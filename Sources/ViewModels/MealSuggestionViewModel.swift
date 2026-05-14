@@ -29,7 +29,7 @@ final class MealSuggestionViewModel {
             let prompt = buildSuggestionPrompt(pantryItems: pantryItems)
             let raw = try await service.send(prompt: prompt, maxOutputTokens: 512)
             suggestions = try parseMenuSuggestions(from: raw)
-        } catch GeminiError.rateLimited(let seconds) {
+        } catch GeminiError.rateLimited(let seconds, _) {
             startCountdown(seconds: seconds)
         } catch {
             errorMessage = error.localizedDescription
@@ -50,9 +50,9 @@ final class MealSuggestionViewModel {
             let prompt = buildRecipePrompt(dishName: suggestion.name, pantryItems: pantryItems)
             let raw = try await service.send(prompt: prompt, maxOutputTokens: 1024)
             detailedRecipe = try parseDetailedRecipe(from: raw)
-        } catch GeminiError.rateLimited(let seconds) {
-            errorMessage = "リクエスト上限に達しました。\(seconds)秒後にもう一度お試しください"
-            startCountdown(seconds: seconds)
+        } catch let e as GeminiError {
+            errorMessage = e.errorDescription
+            if case .rateLimited(let seconds, _) = e { startCountdown(seconds: seconds) }
         } catch {
             errorMessage = error.localizedDescription
         }

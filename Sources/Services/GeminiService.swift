@@ -4,7 +4,7 @@ import GoogleGenerativeAI
 enum GeminiError: LocalizedError {
     case invalidAPIKey
     case emptyResponse
-    case rateLimited(retryAfter: Int)
+    case rateLimited(retryAfter: Int, detail: String)
     case apiError(String)
     case networkError(Error)
 
@@ -14,8 +14,19 @@ enum GeminiError: LocalizedError {
             return "APIキーが設定されていません。Sources/Secrets.swift を確認してください"
         case .emptyResponse:
             return "Gemini からの応答が空です"
-        case .rateLimited(let seconds):
-            return "リクエスト上限（無料枠: 15回/分）に達しました。\(seconds)秒後にもう一度お試しください"
+        case .rateLimited(let seconds, let detail):
+            let timeLabel: String
+            if seconds >= 3600 {
+                timeLabel = "\(seconds / 3600)時間\((seconds % 3600) / 60)分"
+            } else if seconds >= 60 {
+                timeLabel = "\(seconds / 60)分\(seconds % 60)秒"
+            } else {
+                timeLabel = "\(seconds)秒"
+            }
+            let hint = detail.contains("retry in")
+                ? "（分間リクエスト上限: 15回/分）"
+                : "（日次上限 1,500回/日 の可能性があります）"
+            return "リクエスト上限に達しました \(hint)\n\(timeLabel)後に再試行できます\n詳細: \(detail.prefix(120))"
         case .apiError(let message):
             return "Gemini APIエラー: \(message)"
         case .networkError(let e):
@@ -58,7 +69,8 @@ struct GeminiService {
 
             let desc = String(describing: error)
             if desc.contains("429") || desc.contains("resourceExhausted") {
-                throw GeminiError.rateLimited(retryAfter: extractRetryDelay(from: desc))
+                let (seconds, raw) = extractRetryInfo(from: desc)
+                throw GeminiError.rateLimited(retryAfter: seconds, detail: raw)
             }
             throw GeminiError.apiError(desc)
 
@@ -69,11 +81,21 @@ struct GeminiService {
         }
     }
 
-    private func extractRetryDelay(from text: String) -> Int {
-        if let match = text.firstMatch(of: /retry in (\d+(?:\.\d+)?)s/),
-           let seconds = Double(match.output.1) {
-            return Int(seconds.rounded(.up)) + 2
+    private func extractRetryInfo(from text: String) -> (seconds: Int, raw: String) {
+        // extract human-readable snippet from the error description
+        let snippet: String
+        if let msgRange = text.range(of: "message: \""),
+           let endRange = text[msgRange.upperBound...].range(of: "\"") {
+            snippet = String(text[msgRange.upperBound..<endRange.lowerBound])
+        } else {
+            snippet = String(text.prefix(200))
         }
-        return 62
+
+        if let match = text.firstMatch(of: /retry in (\d+(?:\.\d+)?)s/),
+           let secs = Double(match.output.1) {
+            return (Int(secs.rounded(.up)) + 2, snippet)
+        }
+        // could not parse retry time → likely daily quota or unknown limit
+        return (300, snippet.isEmpty ? text.prefix(200).description : snippet)
     }
 }
