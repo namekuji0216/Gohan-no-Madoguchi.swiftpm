@@ -2,44 +2,45 @@ import SwiftUI
 import SwiftData
 
 struct InventoryView: View {
-    @Query(sort: \PantryItem.registeredAt) private var items: [PantryItem]
+    // カテゴリごとに独立したクエリ — Swift の filter に頼らない
+    @Query(filter: #Predicate<PantryItem> { $0.typeRawValue == "調味料" },
+           sort: \PantryItem.registeredAt) private var seasonings: [PantryItem]
+    @Query(filter: #Predicate<PantryItem> { $0.typeRawValue == "肉" },
+           sort: \PantryItem.registeredAt) private var meats: [PantryItem]
+    @Query(filter: #Predicate<PantryItem> { $0.typeRawValue == "魚" },
+           sort: \PantryItem.registeredAt) private var fishes: [PantryItem]
+    @Query(filter: #Predicate<PantryItem> { $0.typeRawValue == "野菜" },
+           sort: \PantryItem.registeredAt) private var vegetables: [PantryItem]
+    @Query(filter: #Predicate<PantryItem> { $0.typeRawValue == "その他" },
+           sort: \PantryItem.registeredAt) private var others: [PantryItem]
+
     @Environment(\.modelContext) private var modelContext
     @State private var showingAddSheet = false
     @State private var isSelecting = false
     @State private var selectedIDs: Set<PersistentIdentifier> = []
 
-    private var allIDs: Set<PersistentIdentifier> { Set(items.map(\.persistentModelID)) }
-    private var allSelected: Bool { !items.isEmpty && selectedIDs == allIDs }
-
-    // セクションの順序を固定して Section 数の変化によるレイアウト崩れを防ぐ
-    private func group(_ type: PantryItemType) -> [PantryItem] {
-        items.filter { $0.type == type }
+    private var allItems: [PantryItem] {
+        seasonings + meats + fishes + vegetables + others
+    }
+    private var isEmpty: Bool { allItems.isEmpty }
+    private var allSelected: Bool {
+        !isEmpty && selectedIDs.count == allItems.count
     }
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(PantryItemType.allCases, id: \.self) { type in
-                    let g = group(type)
-                    if !g.isEmpty {
-                        Section {
-                            ForEach(g) { item in
-                                row(item)
-                            }
-                            .onDelete(perform: isSelecting ? nil : { offsets in
-                                offsets.map { g[$0] }.forEach { modelContext.delete($0) }
-                            })
-                        } header: {
-                            Label(type.rawValue, systemImage: type.icon)
-                        }
-                    }
-                }
+                itemSection(type: .seasoning, items: seasonings)
+                itemSection(type: .meat,      items: meats)
+                itemSection(type: .fish,      items: fishes)
+                itemSection(type: .vegetable, items: vegetables)
+                itemSection(type: .other,     items: others)
             }
             .listStyle(.insetGrouped)
             .navigationTitle("在庫管理")
             .toolbar { toolbarContent }
             .overlay {
-                if items.isEmpty {
+                if isEmpty {
                     ContentUnavailableView {
                         Label("食材・調味料がありません", systemImage: "cart")
                     } description: {
@@ -54,25 +55,38 @@ struct InventoryView: View {
         }
     }
 
-    // MARK: - 行
+    // MARK: - Section
 
     @ViewBuilder
-    private func row(_ item: PantryItem) -> some View {
-        let selected = selectedIDs.contains(item.persistentModelID)
-        HStack(spacing: 12) {
-            if isSelecting {
-                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(selected ? Color.blue : Color.secondary)
+    private func itemSection(type: PantryItemType, items: [PantryItem]) -> some View {
+        if !items.isEmpty {
+            Section {
+                ForEach(items) { item in
+                    HStack(spacing: 12) {
+                        if isSelecting {
+                            let sel = selectedIDs.contains(item.persistentModelID)
+                            Image(systemName: sel ? "checkmark.circle.fill" : "circle")
+                                .font(.title3)
+                                .foregroundStyle(sel ? Color.blue : Color.secondary)
+                        }
+                        Text(item.name)
+                            .foregroundStyle(Color.primary)
+                        Spacer()
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        guard isSelecting else { return }
+                        let id = item.persistentModelID
+                        if selectedIDs.contains(id) { selectedIDs.remove(id) }
+                        else { selectedIDs.insert(id) }
+                    }
+                }
+                .onDelete(perform: isSelecting ? nil : { offsets in
+                    offsets.map { items[$0] }.forEach { modelContext.delete($0) }
+                })
+            } header: {
+                Label(type.rawValue, systemImage: type.icon)
             }
-            Text(item.name)
-                .foregroundStyle(Color.primary)
-        }
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard isSelecting else { return }
-            if selected { selectedIDs.remove(item.persistentModelID) }
-            else { selectedIDs.insert(item.persistentModelID) }
         }
     }
 
@@ -86,7 +100,8 @@ struct InventoryView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button(allSelected ? "全解除" : "全選択") {
-                    selectedIDs = allSelected ? [] : allIDs
+                    if allSelected { selectedIDs.removeAll() }
+                    else { selectedIDs = Set(allItems.map(\.persistentModelID)) }
                 }
             }
             ToolbarItem(placement: .bottomBar) {
@@ -100,7 +115,7 @@ struct InventoryView: View {
             }
         } else {
             ToolbarItem(placement: .topBarLeading) {
-                if !items.isEmpty {
+                if !isEmpty {
                     Button("選択", systemImage: "checkmark.circle") { isSelecting = true }
                 }
             }
@@ -113,8 +128,8 @@ struct InventoryView: View {
     // MARK: - Actions
 
     private func deleteSelected() {
-        items.filter { selectedIDs.contains($0.persistentModelID) }
-            .forEach { modelContext.delete($0) }
+        allItems.filter { selectedIDs.contains($0.persistentModelID) }
+                .forEach { modelContext.delete($0) }
         exitSelection()
     }
 
@@ -155,15 +170,13 @@ private struct AddPantryItemView: View {
                                 let added = registeredNames.contains(preset)
                                 PresetChip(name: preset, isAdded: added) {
                                     guard !added else { return }
-                                    let item = PantryItem(name: preset, type: selectedType)
-                                    modelContext.insert(item)
+                                    modelContext.insert(PantryItem(name: preset, type: selectedType))
                                     try? modelContext.save()
                                 }
                             }
                         }
                         .padding(.vertical, 4)
                     }
-
                     Section("手動で追加") {
                         HStack {
                             TextField("名前を入力…", text: $customName)
@@ -189,8 +202,7 @@ private struct AddPantryItemView: View {
     private func saveCustom() {
         let trimmed = customName.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        let item = PantryItem(name: trimmed, type: selectedType)
-        modelContext.insert(item)
+        modelContext.insert(PantryItem(name: trimmed, type: selectedType))
         try? modelContext.save()
         customName = ""
     }
@@ -218,8 +230,7 @@ private struct PresetChip: View {
                 .overlay(alignment: .topTrailing) {
                     if isAdded {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(.tint)
+                            .font(.caption).foregroundStyle(.tint)
                             .offset(x: 4, y: -4)
                     }
                 }
