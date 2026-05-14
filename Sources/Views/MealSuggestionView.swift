@@ -192,7 +192,9 @@ struct MealSuggestionView: View {
                     SuggestionCard(suggestion: suggestion) {
                         Task {
                             await viewModel.generateRecipe(for: suggestion, pantryItems: pantryItems)
-                            showingRecipe = true
+                            if viewModel.detailedRecipe != nil {
+                                showingRecipe = true
+                            }
                         }
                     }
                 }

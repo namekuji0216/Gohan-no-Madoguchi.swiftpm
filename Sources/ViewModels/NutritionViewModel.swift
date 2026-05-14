@@ -23,7 +23,7 @@ final class NutritionViewModel {
 
         do {
             let prompt = buildPrompt(recipes: recipes)
-            let raw = try await service.send(prompt: prompt, maxOutputTokens: 2048)
+            let raw = try await service.send(prompt: prompt, maxOutputTokens: 1024)
             analysis = try parseAnalysis(from: raw)
         } catch GeminiError.rateLimited(let seconds) {
             startCountdown(seconds: seconds)
@@ -57,28 +57,12 @@ final class NutritionViewModel {
         }.joined(separator: "\n")
 
         return """
-        あなたは管理栄養士です。以下の過去2週間の食事記録を分析し、不足している栄養素を特定してください。
-
-        【過去2週間の料理記録】
+        管理栄養士として、以下の食事記録から不足栄養素を分析してください。
         \(recipeList)
 
-        以下のJSON**のみ**を返してください。前置きや説明文は不要です。
-        {
-          "summary": "食事全体の栄養バランスについての評価（2〜3文）",
-          "deficiencies": [
-            {
-              "nutrient": "不足している栄養素名",
-              "reason": "この栄養素が不足していると考えられる理由（1〜2文）",
-              "ingredients": ["この栄養素を豊富に含む食材1", "食材2", "食材3", "食材4"],
-              "recipeExamples": [
-                {"name": "レシピ名", "description": "その料理の短い説明（1文）"},
-                {"name": "レシピ名", "description": "その料理の短い説明（1文）"},
-                {"name": "レシピ名", "description": "その料理の短い説明（1文）"}
-              ]
-            }
-          ]
-        }
-        deficienciesは3〜5個、recipeExamplesは各栄養素につき3個にしてください。
+        以下のJSON**のみ**を返してください。
+        {"summary":"2文の総合評価","deficiencies":[{"nutrient":"栄養素名","reason":"1文の理由","ingredients":["食材1","食材2","食材3"],"recipeExamples":[{"name":"レシピ名","description":"1文"},{"name":"レシピ名","description":"1文"}]}]}
+        deficienciesは3個、recipeExamplesは各2個にしてください。
         """
     }
 

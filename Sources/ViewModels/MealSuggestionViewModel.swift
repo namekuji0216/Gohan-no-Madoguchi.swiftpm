@@ -48,9 +48,10 @@ final class MealSuggestionViewModel {
 
         do {
             let prompt = buildRecipePrompt(dishName: suggestion.name, pantryItems: pantryItems)
-            let raw = try await service.send(prompt: prompt, maxOutputTokens: 2048)
+            let raw = try await service.send(prompt: prompt, maxOutputTokens: 1024)
             detailedRecipe = try parseDetailedRecipe(from: raw)
         } catch GeminiError.rateLimited(let seconds) {
+            errorMessage = "リクエスト上限に達しました。\(seconds)秒後にもう一度お試しください"
             startCountdown(seconds: seconds)
         } catch {
             errorMessage = error.localizedDescription
@@ -92,56 +93,28 @@ final class MealSuggestionViewModel {
         let moodText = moodParts.isEmpty ? "特になし" : moodParts.joined(separator: "、")
 
         return """
-        あなたは家庭料理の献立提案アシスタントです。
-        以下の条件をもとに、献立案を**5つ**提案してください。
+        家庭料理の献立を5つ提案してください。
+        人数: \(servings)人分
+        食材: \(allIngredients)
+        必須食材: \(mustUseText)
+        気分: \(moodText)
 
-        【人数】
-        \(servings)人分
-
-        【冷蔵庫・パントリーの食材】
-        \(allIngredients)
-
-        【必ず使いたい食材】
-        \(mustUseText)
-
-        【気分・食べたいもの】
-        \(moodText)
-
-        以下のJSON配列**のみ**を返してください。前置きや説明文は不要です。
-        [
-          {
-            "name": "料理名（日本語）",
-            "description": "その料理の短い説明（1〜2文、食欲をそそる表現で）"
-          }
-        ]
-        要素は必ず5つにしてください。
+        以下のJSON配列**のみ**を返してください。
+        [{"name":"料理名","description":"1〜2文の説明"}]
+        要素は必ず5つ。
         """
     }
 
     private func buildRecipePrompt(dishName: String, pantryItems: [PantryItem]) -> String {
-        let ingredientList = pantryItems.isEmpty
-            ? "（食材が登録されていません）"
-            : pantryItems.map { "・\($0.name)" }.joined(separator: "\n")
-
         return """
-        「\(dishName)」の\(servings)人分の詳細なレシピを教えてください。
-
-        【手元にある食材】
-        \(ingredientList)
-
-        手元にない食材も材料リストに含めてください（買い物の参考にします）。
+        「\(dishName)」の\(servings)人分のレシピを教えてください。
         以下のJSON**のみ**を返してください。前置きや説明文は不要です。
         {
           "name": "料理名",
-          "ingredients": [
-            "材料名（分量）",
-            "材料名（分量）"
-          ],
-          "steps": [
-            "手順1の説明",
-            "手順2の説明"
-          ]
+          "ingredients": ["材料名（分量）"],
+          "steps": ["手順1", "手順2"]
         }
+        材料は10個以内、手順は6ステップ以内で簡潔にまとめてください。
         """
     }
 
