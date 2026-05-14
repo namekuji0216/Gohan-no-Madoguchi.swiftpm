@@ -5,6 +5,9 @@ struct MealSuggestionView: View {
     @Query(sort: \PantryItem.registeredAt) private var pantryItems: [PantryItem]
     @State private var viewModel = MealSuggestionViewModel()
     @State private var showingRecipe = false
+    @AppStorage("geminiAPIKey") private var savedAPIKey = ""
+
+    private var isAPIKeyConfigured: Bool { GeminiService.isAPIKeyConfigured }
 
     var body: some View {
         NavigationStack {
@@ -167,9 +170,14 @@ struct MealSuggestionView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(viewModel.isLoadingSuggestions || viewModel.rateLimitCountdown != nil)
+            .disabled(!isAPIKeyConfigured || viewModel.isLoadingSuggestions || viewModel.rateLimitCountdown != nil)
 
-            if viewModel.rateLimitCountdown != nil {
+            if !isAPIKeyConfigured {
+                Label("設定画面から Gemini API キーを登録してください", systemImage: "key")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            } else if viewModel.rateLimitCountdown != nil {
                 Text("上限に達しました。カウントダウン後に再試行できます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)

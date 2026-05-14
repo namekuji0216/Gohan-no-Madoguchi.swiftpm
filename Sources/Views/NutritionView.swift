@@ -4,6 +4,9 @@ import SwiftData
 struct NutritionView: View {
     @Query(sort: \RecipeHistory.createdAt, order: .reverse) private var allRecipes: [RecipeHistory]
     @State private var viewModel = NutritionViewModel()
+    @AppStorage("geminiAPIKey") private var savedAPIKey = ""
+
+    private var isAPIKeyConfigured: Bool { GeminiService.isAPIKeyConfigured }
 
     private var recentRecipes: [RecipeHistory] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now)!
@@ -71,9 +74,14 @@ struct NutritionView: View {
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(viewModel.isLoading || viewModel.rateLimitCountdown != nil)
+            .disabled(!isAPIKeyConfigured || viewModel.isLoading || viewModel.rateLimitCountdown != nil)
 
-            if viewModel.rateLimitCountdown != nil {
+            if !isAPIKeyConfigured {
+                Label("設定画面から Gemini API キーを登録してください", systemImage: "key")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            } else if viewModel.rateLimitCountdown != nil {
                 Text("上限に達しました。カウントダウン後に再試行できます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)

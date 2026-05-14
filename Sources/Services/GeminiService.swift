@@ -34,10 +34,17 @@ struct GeminiService {
     static var isDebugMode = false
 
     private static let modelName = "gemini-2.0-flash"
-    private let apiKey: String
 
-    init(apiKey: String = Secrets.geminiAPIKey) {
-        self.apiKey = apiKey
+    // UserDefaults を優先し、未設定なら Secrets.swift にフォールバック
+    static var effectiveAPIKey: String {
+        let stored = (UserDefaults.standard.string(forKey: "geminiAPIKey") ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        return stored.isEmpty ? Secrets.geminiAPIKey : stored
+    }
+
+    static var isAPIKeyConfigured: Bool {
+        let key = effectiveAPIKey
+        return !key.isEmpty && key != "YOUR_GEMINI_API_KEY_HERE"
     }
 
     func send(prompt: String, maxOutputTokens: Int = 1024) async throws -> String {
@@ -46,6 +53,7 @@ struct GeminiService {
             return Self.mockJSON(for: prompt)
         }
 
+        let apiKey = Self.effectiveAPIKey
         guard apiKey != "YOUR_GEMINI_API_KEY_HERE", !apiKey.isEmpty else {
             throw GeminiError.invalidAPIKey
         }
