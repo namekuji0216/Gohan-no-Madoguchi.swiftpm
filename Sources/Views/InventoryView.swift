@@ -124,21 +124,19 @@ private struct ItemRow: View {
     let onTap: () -> Void
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                if isSelecting {
-                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                        .font(.title3)
-                        .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-                }
-                Text(item.name)
-                    .foregroundStyle(.primary)
-                Spacer()
+        HStack(spacing: 12) {
+            if isSelecting {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             }
-            .contentShape(Rectangle())
+            Text(item.name)
+            Spacer()
         }
-        .buttonStyle(.plain)
-        .disabled(!isSelecting)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isSelecting { onTap() }
+        }
     }
 }
 
