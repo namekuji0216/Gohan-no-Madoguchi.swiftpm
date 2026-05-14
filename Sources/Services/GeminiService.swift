@@ -15,18 +15,12 @@ enum GeminiError: LocalizedError {
         case .emptyResponse:
             return "Gemini からの応答が空です"
         case .rateLimited(let seconds, let detail):
-            let timeLabel: String
-            if seconds >= 3600 {
-                timeLabel = "\(seconds / 3600)時間\((seconds % 3600) / 60)分"
-            } else if seconds >= 60 {
-                timeLabel = "\(seconds / 60)分\(seconds % 60)秒"
-            } else {
-                timeLabel = "\(seconds)秒"
+            let isBillingQuota = detail.lowercased().contains("billing") || detail.lowercased().contains("check your plan")
+            let timeLabel = seconds >= 60 ? "\(seconds / 60)分\(seconds % 60)秒" : "\(seconds)秒"
+            if isBillingQuota {
+                return "無料クォータを使い切りました。\n日次上限（1,500回/日）超過の可能性があります。\n明日 UTC 0:00（日本時間 9:00）にリセットされます。\n詳細: \(detail.prefix(100))"
             }
-            let hint = detail.contains("retry in")
-                ? "（分間リクエスト上限: 15回/分）"
-                : "（日次上限 1,500回/日 の可能性があります）"
-            return "リクエスト上限に達しました \(hint)\n\(timeLabel)後に再試行できます\n詳細: \(detail.prefix(120))"
+            return "分間リクエスト上限（15回/分）に達しました。\n\(timeLabel)後に再試行できます。\n詳細: \(detail.prefix(100))"
         case .apiError(let message):
             return "Gemini APIエラー: \(message)"
         case .networkError(let e):
