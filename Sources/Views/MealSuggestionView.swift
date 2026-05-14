@@ -93,8 +93,13 @@ struct MealSuggestionView: View {
         if !pantryItems.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("使いたい食材")
-                        .font(.headline)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("使いたい食材（任意）")
+                            .font(.headline)
+                        Text("選択した食材を優先して献立に使います")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     Spacer()
                     if !viewModel.selectedIngredientNames.isEmpty {
                         Button("クリア") {
@@ -104,7 +109,7 @@ struct MealSuggestionView: View {
                     }
                 }
 
-                ForEach(PantryItemType.allCases, id: \.self) { type in
+                ForEach(PantryItemType.allCases.filter { $0 != .seasoning }, id: \.self) { type in
                     let group = pantryItems.filter { $0.type == type }
                     if !group.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
