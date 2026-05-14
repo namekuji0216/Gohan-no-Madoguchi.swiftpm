@@ -6,8 +6,10 @@ final class NutritionViewModel {
     var analysis: NutritionAnalysis?
     var isLoading = false
     var errorMessage: String?
+    var rateLimitCountdown: Int? = nil
 
     private let service = GeminiService()
+    private var countdownTask: Task<Void, Never>?
 
     func analyze(recipes: [RecipeHistory]) async {
         guard !recipes.isEmpty else {
@@ -23,11 +25,28 @@ final class NutritionViewModel {
             let prompt = buildPrompt(recipes: recipes)
             let raw = try await service.send(prompt: prompt)
             analysis = try parseAnalysis(from: raw)
+        } catch GeminiError.rateLimited(let seconds) {
+            startCountdown(seconds: seconds)
         } catch {
             errorMessage = error.localizedDescription
         }
 
         isLoading = false
+    }
+
+    // MARK: - カウントダウン
+
+    private func startCountdown(seconds: Int) {
+        countdownTask?.cancel()
+        rateLimitCountdown = seconds
+        countdownTask = Task { @MainActor in
+            for remaining in stride(from: seconds - 1, through: 0, by: -1) {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { break }
+                rateLimitCountdown = remaining
+            }
+            rateLimitCountdown = nil
+        }
     }
 
     // MARK: - プロンプト構築

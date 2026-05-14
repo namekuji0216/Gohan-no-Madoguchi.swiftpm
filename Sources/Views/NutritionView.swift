@@ -54,18 +54,32 @@ struct NutritionView: View {
     // MARK: - 分析ボタン
 
     private var analyzeButton: some View {
-        Button {
-            Task { await viewModel.analyze(recipes: recentRecipes) }
-        } label: {
-            Label(
-                viewModel.isLoading ? "分析中…" : "栄養バランスを分析する",
-                systemImage: "waveform.path.ecg"
-            )
-            .frame(maxWidth: .infinity)
+        VStack(spacing: 8) {
+            Button {
+                Task { await viewModel.analyze(recipes: recentRecipes) }
+            } label: {
+                Group {
+                    if let countdown = viewModel.rateLimitCountdown {
+                        Label("\(countdown)秒後に再試行できます", systemImage: "clock")
+                    } else if viewModel.isLoading {
+                        Label("分析中…", systemImage: "waveform.path.ecg")
+                    } else {
+                        Label("栄養バランスを分析する", systemImage: "waveform.path.ecg")
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(viewModel.isLoading || viewModel.rateLimitCountdown != nil)
+
+            if let countdown = viewModel.rateLimitCountdown {
+                Text("リクエスト上限（無料枠: 20回/分）に達しました。\(countdown)秒後にもう一度お試しください。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(viewModel.isLoading)
     }
 
     // MARK: - ローディング

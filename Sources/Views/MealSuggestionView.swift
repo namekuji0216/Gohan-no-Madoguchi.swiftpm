@@ -150,18 +150,32 @@ struct MealSuggestionView: View {
     // MARK: - 生成ボタン
 
     private var generateButton: some View {
-        Button {
-            Task { await viewModel.generateSuggestions(pantryItems: pantryItems) }
-        } label: {
-            Label(
-                viewModel.isLoadingSuggestions ? "提案を生成中…" : "献立を提案する",
-                systemImage: "sparkles"
-            )
-            .frame(maxWidth: .infinity)
+        VStack(spacing: 8) {
+            Button {
+                Task { await viewModel.generateSuggestions(pantryItems: pantryItems) }
+            } label: {
+                Group {
+                    if let countdown = viewModel.rateLimitCountdown {
+                        Label("\(countdown)秒後に再試行できます", systemImage: "clock")
+                    } else if viewModel.isLoadingSuggestions {
+                        Label("提案を生成中…", systemImage: "sparkles")
+                    } else {
+                        Label("献立を提案する", systemImage: "sparkles")
+                    }
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(viewModel.isLoadingSuggestions || viewModel.rateLimitCountdown != nil)
+
+            if let countdown = viewModel.rateLimitCountdown {
+                Text("リクエスト上限（無料枠: 20回/分）に達しました。\(countdown)秒後にもう一度お試しください。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .disabled(viewModel.isLoadingSuggestions)
     }
 
     // MARK: - 提案リスト

@@ -13,8 +13,10 @@ final class MealSuggestionViewModel {
     var isLoadingSuggestions = false
     var isLoadingRecipe = false
     var errorMessage: String?
+    var rateLimitCountdown: Int? = nil
 
     private let service = GeminiService()
+    private var countdownTask: Task<Void, Never>?
 
     // MARK: - 提案生成（5案）
 
@@ -27,6 +29,8 @@ final class MealSuggestionViewModel {
             let prompt = buildSuggestionPrompt(pantryItems: pantryItems)
             let raw = try await service.send(prompt: prompt)
             suggestions = try parseMenuSuggestions(from: raw)
+        } catch GeminiError.rateLimited(let seconds) {
+            startCountdown(seconds: seconds)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -46,11 +50,28 @@ final class MealSuggestionViewModel {
             let prompt = buildRecipePrompt(dishName: suggestion.name, pantryItems: pantryItems)
             let raw = try await service.send(prompt: prompt)
             detailedRecipe = try parseDetailedRecipe(from: raw)
+        } catch GeminiError.rateLimited(let seconds) {
+            startCountdown(seconds: seconds)
         } catch {
             errorMessage = error.localizedDescription
         }
 
         isLoadingRecipe = false
+    }
+
+    // MARK: - カウントダウン
+
+    private func startCountdown(seconds: Int) {
+        countdownTask?.cancel()
+        rateLimitCountdown = seconds
+        countdownTask = Task { @MainActor in
+            for remaining in stride(from: seconds - 1, through: 0, by: -1) {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { break }
+                rateLimitCountdown = remaining
+            }
+            rateLimitCountdown = nil
+        }
     }
 
     // MARK: - プロンプト構築

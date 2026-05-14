@@ -58,14 +58,8 @@ struct GeminiService {
                 return text
             }
 
-            // 429 レート制限 → 待機してリトライ
+            // 429 レート制限 → 待機秒数を伝えてすぐスロー（自動リトライしない）
             let desc = String(describing: error)
-            if (desc.contains("429") || desc.contains("resourceExhausted")), retriesLeft > 0 {
-                let wait = extractRetryDelay(from: desc)
-                try await Task.sleep(for: .seconds(Double(wait)))
-                return try await attempt(prompt: prompt, retriesLeft: retriesLeft - 1)
-            }
-
             if desc.contains("429") || desc.contains("resourceExhausted") {
                 throw GeminiError.rateLimited(retryAfter: extractRetryDelay(from: desc))
             }
