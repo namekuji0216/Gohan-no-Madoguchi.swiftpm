@@ -5,6 +5,8 @@ import Observation
 final class MealSuggestionViewModel {
     var selectedTags: Set<MoodTag> = []
     var keyword = ""
+    var servings: Int = 2
+    var selectedIngredientNames: Set<String> = []
     var suggestions: [MenuSuggestion] = []
     var selectedSuggestion: MenuSuggestion?
     var detailedRecipe: DetailedRecipe?
@@ -54,19 +56,32 @@ final class MealSuggestionViewModel {
     // MARK: - プロンプト構築
 
     private func buildSuggestionPrompt(pantryItems: [PantryItem]) -> String {
-        let ingredientList = pantryItems.isEmpty
+        let allIngredients = pantryItems.isEmpty
             ? "（食材が登録されていません）"
             : pantryItems.map { "・\($0.name)（\($0.type.rawValue)）" }.joined(separator: "\n")
+
+        let mustUseText: String
+        if selectedIngredientNames.isEmpty {
+            mustUseText = "特になし"
+        } else {
+            mustUseText = selectedIngredientNames.sorted().map { "・\($0)" }.joined(separator: "\n")
+        }
 
         let moodParts = selectedTags.map(\.rawValue) + (keyword.isEmpty ? [] : [keyword])
         let moodText = moodParts.isEmpty ? "特になし" : moodParts.joined(separator: "、")
 
         return """
         あなたは家庭料理の献立提案アシスタントです。
-        以下の食材と気分をもとに、今日の献立案を**5つ**提案してください。
+        以下の条件をもとに、献立案を**5つ**提案してください。
+
+        【人数】
+        \(servings)人分
 
         【冷蔵庫・パントリーの食材】
-        \(ingredientList)
+        \(allIngredients)
+
+        【必ず使いたい食材】
+        \(mustUseText)
 
         【気分・食べたいもの】
         \(moodText)
@@ -88,7 +103,7 @@ final class MealSuggestionViewModel {
             : pantryItems.map { "・\($0.name)" }.joined(separator: "\n")
 
         return """
-        「\(dishName)」の詳細なレシピを教えてください。
+        「\(dishName)」の\(servings)人分の詳細なレシピを教えてください。
 
         【手元にある食材】
         \(ingredientList)

@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 struct MealSuggestionView: View {
-    @Query private var pantryItems: [PantryItem]
+    @Query(sort: \PantryItem.registeredAt) private var pantryItems: [PantryItem]
     @State private var viewModel = MealSuggestionViewModel()
     @State private var showingRecipe = false
 
@@ -10,7 +10,9 @@ struct MealSuggestionView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
+                    servingsSection
                     moodTagSection
+                    ingredientPickerSection
                     keywordSection
                     generateButton
                     if let error = viewModel.errorMessage {
@@ -25,6 +27,38 @@ struct MealSuggestionView: View {
                 if viewModel.selectedSuggestion != nil {
                     RecipeDetailView(viewModel: viewModel, pantryItems: pantryItems)
                 }
+            }
+        }
+    }
+
+    // MARK: - 人数
+
+    private var servingsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("人数")
+                .font(.headline)
+            HStack(spacing: 16) {
+                Button {
+                    if viewModel.servings > 1 { viewModel.servings -= 1 }
+                } label: {
+                    Image(systemName: "minus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(viewModel.servings > 1 ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                }
+                .buttonStyle(.plain)
+
+                Text("\(viewModel.servings)人分")
+                    .font(.title3.bold())
+                    .frame(minWidth: 60, alignment: .center)
+
+                Button {
+                    if viewModel.servings < 8 { viewModel.servings += 1 }
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(viewModel.servings < 8 ? AnyShapeStyle(.tint) : AnyShapeStyle(.tertiary))
+                }
+                .buttonStyle(.plain)
             }
         }
     }
@@ -45,6 +79,50 @@ struct MealSuggestionView: View {
                             viewModel.selectedTags.remove(tag)
                         } else {
                             viewModel.selectedTags.insert(tag)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - 使いたい食材
+
+    @ViewBuilder
+    private var ingredientPickerSection: some View {
+        if !pantryItems.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("使いたい食材")
+                        .font(.headline)
+                    Spacer()
+                    if !viewModel.selectedIngredientNames.isEmpty {
+                        Button("クリア") {
+                            viewModel.selectedIngredientNames.removeAll()
+                        }
+                        .font(.caption)
+                    }
+                }
+
+                ForEach(PantryItemType.allCases, id: \.self) { type in
+                    let group = pantryItems.filter { $0.type == type }
+                    if !group.isEmpty {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(type.rawValue, systemImage: type.icon)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            FlowLayout(spacing: 8) {
+                                ForEach(group) { item in
+                                    let selected = viewModel.selectedIngredientNames.contains(item.name)
+                                    IngredientChip(name: item.name, isSelected: selected) {
+                                        if selected {
+                                            viewModel.selectedIngredientNames.remove(item.name)
+                                        } else {
+                                            viewModel.selectedIngredientNames.insert(item.name)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -86,11 +164,7 @@ struct MealSuggestionView: View {
     @ViewBuilder
     private var suggestionsSection: some View {
         if viewModel.isLoadingSuggestions {
-            HStack {
-                Spacer()
-                ProgressView()
-                Spacer()
-            }
+            HStack { Spacer(); ProgressView(); Spacer() }
         } else if !viewModel.suggestions.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text("提案されたメニュー")
@@ -133,7 +207,36 @@ private struct MoodTagChip: View {
                     isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(.systemGray5)),
                     in: Capsule()
                 )
-                .foregroundStyle(isSelected ? .white : .primary)
+                .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - 食材チップ
+
+private struct IngredientChip: View {
+    let name: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 4) {
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.caption.bold())
+                }
+                Text(name)
+                    .font(.subheadline)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(
+                isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(Color(.systemGray5)),
+                in: Capsule()
+            )
+            .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
         }
         .buttonStyle(.plain)
     }
@@ -170,7 +273,7 @@ private struct SuggestionCard: View {
     }
 }
 
-// MARK: - フローレイアウト（タグ折り返し）
+// MARK: - フローレイアウト
 
 private struct FlowLayout: Layout {
     var spacing: CGFloat = 8
@@ -182,7 +285,10 @@ private struct FlowLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let result = layout(subviews: subviews, width: bounds.width)
         for (index, frame) in result.frames.enumerated() {
-            subviews[index].place(at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY), proposal: .unspecified)
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + frame.minX, y: bounds.minY + frame.minY),
+                proposal: .unspecified
+            )
         }
     }
 
