@@ -11,6 +11,10 @@ struct ContentView: View {
                 .tabItem {
                     Label("献立提案", systemImage: "fork.knife")
                 }
+            NutritionView()
+                .tabItem {
+                    Label("栄養分析", systemImage: "heart.text.clipboard")
+                }
             HistoryView()
                 .tabItem {
                     Label("履歴", systemImage: "clock")
