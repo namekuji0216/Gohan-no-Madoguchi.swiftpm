@@ -27,7 +27,7 @@ final class MealSuggestionViewModel {
 
         do {
             let prompt = buildSuggestionPrompt(pantryItems: pantryItems)
-            let raw = try await service.send(prompt: prompt)
+            let raw = try await service.send(prompt: prompt, maxOutputTokens: 512)
             suggestions = try parseMenuSuggestions(from: raw)
         } catch GeminiError.rateLimited(let seconds) {
             startCountdown(seconds: seconds)
@@ -48,7 +48,7 @@ final class MealSuggestionViewModel {
 
         do {
             let prompt = buildRecipePrompt(dishName: suggestion.name, pantryItems: pantryItems)
-            let raw = try await service.send(prompt: prompt)
+            let raw = try await service.send(prompt: prompt, maxOutputTokens: 2048)
             detailedRecipe = try parseDetailedRecipe(from: raw)
         } catch GeminiError.rateLimited(let seconds) {
             startCountdown(seconds: seconds)

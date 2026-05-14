@@ -23,7 +23,7 @@ final class NutritionViewModel {
 
         do {
             let prompt = buildPrompt(recipes: recipes)
-            let raw = try await service.send(prompt: prompt)
+            let raw = try await service.send(prompt: prompt, maxOutputTokens: 2048)
             analysis = try parseAnalysis(from: raw)
         } catch GeminiError.rateLimited(let seconds) {
             startCountdown(seconds: seconds)
