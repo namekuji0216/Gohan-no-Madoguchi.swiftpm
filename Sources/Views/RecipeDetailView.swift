@@ -7,23 +7,36 @@ struct RecipeDetailView: View {
     let pantryItems: [PantryItem]
 
     @Environment(\.modelContext) private var modelContext
+    @State private var displayServings: Int
     @State private var rating = 3
     @State private var saved = false
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
+
+    init(viewModel: MealSuggestionViewModel, pantryItems: [PantryItem]) {
+        self.viewModel = viewModel
+        self.pantryItems = pantryItems
+        self._displayServings = State(initialValue: viewModel.servings)
+    }
+
+    private var scaledIngredients: [String] {
+        guard let recipe = viewModel.detailedRecipe else { return [] }
+        return IngredientScaler.scale(recipe.ingredients, from: viewModel.servings, to: displayServings)
+    }
 
     var body: some View {
         ScrollView {
             if viewModel.isLoadingRecipe {
                 VStack(spacing: 16) {
                     ProgressView()
-                    Text("レシピを生成中…")
-                        .foregroundStyle(.secondary)
+                    Text("レシピを生成中…").foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity, minHeight: 300)
             } else if let recipe = viewModel.detailedRecipe {
                 VStack(alignment: .leading, spacing: 24) {
-                    ingredientsSection(recipe.ingredients)
+                    // 人数変更
+                    servingsSection
+                    ingredientsSection(scaledIngredients)
                     stepsSection(recipe.steps)
                     saveSection(recipe)
                 }
@@ -44,11 +57,21 @@ struct RecipeDetailView: View {
         }
     }
 
+    // MARK: - 人数
+
+    private var servingsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label("人数", systemImage: "person.2")
+                .font(.headline)
+            ServingsControl(servings: $displayServings)
+        }
+    }
+
     // MARK: - 材料
 
     private func ingredientsSection(_ ingredients: [String]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("材料", systemImage: "list.bullet")
+            Label("材料（\(displayServings)人分）", systemImage: "list.bullet")
                 .font(.headline)
             ForEach(ingredients, id: \.self) { item in
                 HStack(alignment: .top, spacing: 8) {
@@ -72,8 +95,7 @@ struct RecipeDetailView: View {
                         .foregroundStyle(.white)
                         .frame(width: 26, height: 26)
                         .background(.tint, in: Circle())
-                    Text(step)
-                        .fixedSize(horizontal: false, vertical: true)
+                    Text(step).fixedSize(horizontal: false, vertical: true)
                 }
             }
         }
@@ -85,16 +107,13 @@ struct RecipeDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
 
-            // 写真
-            Label("写真（任意）", systemImage: "photo")
-                .font(.headline)
+            Label("写真（任意）", systemImage: "photo").font(.headline)
 
             if let data = photoData, let ui = UIImage(data: data) {
                 Image(uiImage: ui)
                     .resizable()
                     .scaledToFill()
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 200)
+                    .frame(maxWidth: .infinity).frame(height: 200)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
             }
 
@@ -104,15 +123,12 @@ struct RecipeDetailView: View {
             }
             .buttonStyle(.bordered)
 
-            // 評価
-            Label("評価", systemImage: "star")
-                .font(.headline)
+            Label("評価", systemImage: "star").font(.headline)
 
             HStack(spacing: 4) {
                 ForEach(1...5, id: \.self) { star in
                     Image(systemName: star <= rating ? "star.fill" : "star")
-                        .font(.title2)
-                        .foregroundStyle(.yellow)
+                        .font(.title2).foregroundStyle(.yellow)
                         .onTapGesture { rating = star }
                 }
             }
@@ -130,11 +146,13 @@ struct RecipeDetailView: View {
     }
 
     private func saveRecipe(_ recipe: DetailedRecipe) {
+        // 表示中の人数・スケール済み分量で保存
         let history = RecipeHistory(
             name: recipe.name,
-            ingredients: recipe.ingredients,
+            ingredients: scaledIngredients,
             steps: recipe.steps,
             rating: rating,
+            servings: displayServings,
             photoData: photoData
         )
         modelContext.insert(history)

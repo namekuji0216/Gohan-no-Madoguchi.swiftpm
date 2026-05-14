@@ -3,6 +3,17 @@ import SwiftUI
 struct HistoryDetailView: View {
     let recipe: RecipeHistory
 
+    @State private var displayServings: Int
+
+    init(recipe: RecipeHistory) {
+        self.recipe = recipe
+        self._displayServings = State(initialValue: recipe.servings)
+    }
+
+    private var scaledIngredients: [String] {
+        IngredientScaler.scale(recipe.ingredients, from: recipe.servings, to: displayServings)
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -12,8 +23,7 @@ struct HistoryDetailView: View {
                     Image(uiImage: ui)
                         .resizable()
                         .scaledToFill()
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 240)
+                        .frame(maxWidth: .infinity).frame(height: 240)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                 }
 
@@ -27,17 +37,25 @@ struct HistoryDetailView: View {
                     }
                     Spacer()
                     Text(recipe.createdAt.formatted(date: .long, time: .omitted))
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+
+                Divider()
+
+                // 人数変更
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("人数", systemImage: "person.2")
+                        .font(.headline)
+                    ServingsControl(servings: $displayServings)
                 }
 
                 Divider()
 
                 // 材料
                 VStack(alignment: .leading, spacing: 10) {
-                    Label("材料", systemImage: "list.bullet")
+                    Label("材料（\(displayServings)人分）", systemImage: "list.bullet")
                         .font(.headline)
-                    ForEach(recipe.ingredients, id: \.self) { item in
+                    ForEach(scaledIngredients, id: \.self) { item in
                         HStack(alignment: .top, spacing: 8) {
                             Text("・").foregroundStyle(.secondary)
                             Text(item)
@@ -56,8 +74,7 @@ struct HistoryDetailView: View {
                                 .foregroundStyle(.white)
                                 .frame(width: 26, height: 26)
                                 .background(.tint, in: Circle())
-                            Text(step)
-                                .fixedSize(horizontal: false, vertical: true)
+                            Text(step).fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
