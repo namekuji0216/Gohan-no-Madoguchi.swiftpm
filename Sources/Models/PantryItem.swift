@@ -18,7 +18,6 @@ enum PantryItemType: String, Codable, CaseIterable {
         }
     }
 
-    // プリセット食材リスト
     var presets: [String] {
         switch self {
         case .seasoning:
@@ -40,12 +39,19 @@ enum PantryItemType: String, Codable, CaseIterable {
 @Model
 final class PantryItem {
     var name: String
-    var type: PantryItemType
+    // SwiftData での Codable enum 直接保存は不安定なため rawValue の String で保持する
+    var typeRawValue: String
     var registeredAt: Date
+
+    // computed property として列挙型アクセスを提供
+    var type: PantryItemType {
+        get { PantryItemType(rawValue: typeRawValue) ?? .other }
+        set { typeRawValue = newValue.rawValue }
+    }
 
     init(name: String, type: PantryItemType, registeredAt: Date = .now) {
         self.name = name
-        self.type = type
+        self.typeRawValue = type.rawValue
         self.registeredAt = registeredAt
     }
 }
