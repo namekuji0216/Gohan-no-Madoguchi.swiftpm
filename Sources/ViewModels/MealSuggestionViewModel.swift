@@ -29,8 +29,9 @@ final class MealSuggestionViewModel {
             let prompt = buildSuggestionPrompt(pantryItems: pantryItems)
             let raw = try await service.send(prompt: prompt, maxOutputTokens: 512)
             suggestions = try parseMenuSuggestions(from: raw)
-        } catch GeminiError.rateLimited(let seconds, _) {
-            startCountdown(seconds: seconds)
+        } catch let e as GeminiError {
+            errorMessage = e.errorDescription
+            if case .rateLimited(let seconds, _) = e { startCountdown(seconds: seconds) }
         } catch {
             errorMessage = error.localizedDescription
         }

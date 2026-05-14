@@ -73,8 +73,8 @@ struct NutritionView: View {
             .controlSize(.large)
             .disabled(viewModel.isLoading || viewModel.rateLimitCountdown != nil)
 
-            if let countdown = viewModel.rateLimitCountdown {
-                Text("リクエスト上限（無料枠: 20回/分）に達しました。\(countdown)秒後にもう一度お試しください。")
+            if viewModel.rateLimitCountdown != nil {
+                Text("上限に達しました。カウントダウン後に再試行できます。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
