@@ -15,7 +15,7 @@ enum GeminiError: LocalizedError {
         case .emptyResponse:
             return "Gemini からの応答が空です"
         case .rateLimited(let seconds):
-            return "リクエスト上限に達しました（無料枠: 20回/分）。\(seconds)秒ほど待ってから再度お試しください"
+            return "リクエスト上限（無料枠: 15回/分）に達しました。\(seconds)秒後にもう一度お試しください"
         case .apiError(let message):
             return "Gemini APIエラー: \(message)"
         case .networkError(let e):
@@ -25,40 +25,37 @@ enum GeminiError: LocalizedError {
 }
 
 struct GeminiService {
-    private let model: GenerativeModel
+    // gemini-2.0-flash: 思考トークンなし・無料枠でトークン消費が少ない
+    private static let modelName = "gemini-2.0-flash"
+    private let apiKey: String
 
-    init(apiKey: String = Secrets.geminiAPIKey, modelName: String = "gemini-2.5-flash") {
-        let config = GenerationConfig(temperature: 0.9, maxOutputTokens: 8192)
-        model = GenerativeModel(name: modelName, apiKey: apiKey, generationConfig: config)
+    init(apiKey: String = Secrets.geminiAPIKey) {
+        self.apiKey = apiKey
     }
 
-    func send(prompt: String) async throws -> String {
-        guard Secrets.geminiAPIKey != "YOUR_GEMINI_API_KEY_HERE",
-              !Secrets.geminiAPIKey.isEmpty else {
+    /// maxOutputTokens を呼び出し側で指定してトークン消費を最小化する
+    func send(prompt: String, maxOutputTokens: Int = 1024) async throws -> String {
+        guard apiKey != "YOUR_GEMINI_API_KEY_HERE", !apiKey.isEmpty else {
             throw GeminiError.invalidAPIKey
         }
-        return try await attempt(prompt: prompt, retriesLeft: 1)
-    }
 
-    // MARK: - リトライ付き送信
+        let config = GenerationConfig(temperature: 0.9, maxOutputTokens: maxOutputTokens)
+        let model = GenerativeModel(
+            name: Self.modelName,
+            apiKey: apiKey,
+            generationConfig: config
+        )
 
-    private func attempt(prompt: String, retriesLeft: Int) async throws -> String {
         do {
             let response = try await model.generateContent(prompt)
 
-            if let text = response.text, !text.isEmpty {
-                return text
-            }
+            if let text = response.text, !text.isEmpty { return text }
             throw GeminiError.emptyResponse
 
         } catch let error as GenerateContentError {
-            // レスポンス途中停止 → 部分テキストを返す
             if case .responseStoppedEarly(_, let partial) = error,
-               let text = partial.text, !text.isEmpty {
-                return text
-            }
+               let text = partial.text, !text.isEmpty { return text }
 
-            // 429 レート制限 → 待機秒数を伝えてすぐスロー（自動リトライしない）
             let desc = String(describing: error)
             if desc.contains("429") || desc.contains("resourceExhausted") {
                 throw GeminiError.rateLimited(retryAfter: extractRetryDelay(from: desc))
@@ -72,14 +69,11 @@ struct GeminiService {
         }
     }
 
-    // MARK: - 待機秒数を抽出
-
     private func extractRetryDelay(from text: String) -> Int {
-        // "Please retry in 42.066s" のような文字列から秒数を取得
         if let match = text.firstMatch(of: /retry in (\d+(?:\.\d+)?)s/),
            let seconds = Double(match.output.1) {
-            return Int(seconds.rounded(.up)) + 2  // 余裕を持たせる
+            return Int(seconds.rounded(.up)) + 2
         }
-        return 62  // デフォルト: 62秒
+        return 62
     }
 }
