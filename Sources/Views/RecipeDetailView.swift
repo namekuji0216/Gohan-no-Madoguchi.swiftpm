@@ -7,6 +7,7 @@ struct RecipeDetailView: View {
     let pantryItems: [PantryItem]
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
     @State private var displayServings: Int
     @State private var rating = 3
     @State private var saved = false
@@ -146,7 +147,6 @@ struct RecipeDetailView: View {
     }
 
     private func saveRecipe(_ recipe: DetailedRecipe) {
-        // 表示中の人数・スケール済み分量で保存
         let history = RecipeHistory(
             name: recipe.name,
             ingredients: scaledIngredients,
@@ -157,5 +157,10 @@ struct RecipeDetailView: View {
         )
         modelContext.insert(history)
         saved = true
+        Task {
+            try? await Task.sleep(for: .milliseconds(800))
+            viewModel.clearRecipe()
+            dismiss()
+        }
     }
 }

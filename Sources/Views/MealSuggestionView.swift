@@ -33,6 +33,9 @@ struct MealSuggestionView: View {
                     RecipeDetailView(viewModel: viewModel, pantryItems: pantryItems)
                 }
             }
+            .onChange(of: showingRecipe) { _, isShowing in
+                if !isShowing { viewModel.clearRecipe() }
+            }
         }
     }
 

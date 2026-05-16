@@ -60,6 +60,12 @@ final class MealSuggestionViewModel {
         isLoadingRecipe = false
     }
 
+    func clearRecipe() {
+        detailedRecipe = nil
+        selectedSuggestion = nil
+        isLoadingRecipe = false
+    }
+
     // MARK: - カウントダウン
 
     private func startCountdown(seconds: Int) {
