@@ -8,7 +8,7 @@ struct SettingsView: View {
     @State private var showSavedBanner = false
 
     private var selectedModel: GeminiModel {
-        GeminiModel(rawValue: selectedModelRaw) ?? .flash20
+        GeminiModel(rawValue: selectedModelRaw) ?? .flash25Lite
     }
 
     private var isConfigured: Bool {
