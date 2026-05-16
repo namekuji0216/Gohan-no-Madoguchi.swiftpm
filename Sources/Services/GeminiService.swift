@@ -46,7 +46,7 @@ struct GeminiService {
     }
 
     static var selectedModelName: String {
-        UserDefaults.standard.string(forKey: "selectedGeminiModel") ?? GeminiModel.flash20.rawValue
+        UserDefaults.standard.string(forKey: "selectedGeminiModel") ?? GeminiModel.flash25Lite.rawValue
     }
 
     func send(prompt: String, maxOutputTokens: Int = 1024) async throws -> String {

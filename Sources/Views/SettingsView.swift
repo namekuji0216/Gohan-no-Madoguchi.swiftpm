@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("geminiAPIKey") private var savedKey = ""
-    @AppStorage("selectedGeminiModel") private var selectedModelRaw = GeminiModel.flash20.rawValue
+    @AppStorage("selectedGeminiModel") private var selectedModelRaw = GeminiModel.flash25Lite.rawValue
     @State private var inputKey = ""
     @State private var isKeyVisible = false
     @State private var showSavedBanner = false
