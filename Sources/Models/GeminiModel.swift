@@ -1,7 +1,7 @@
 import Foundation
 
 enum GeminiModel: String, CaseIterable, Identifiable {
-    case flash25Lite = "gemini-2.5-flash-lite-preview-06-17"
+    case flash25Lite = "gemini-2.5-flash-lite"
     case flash25     = "gemini-2.5-flash"
 
     var id: String { rawValue }
