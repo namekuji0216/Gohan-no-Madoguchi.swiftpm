@@ -98,13 +98,13 @@ struct GeminiService: AIService {
     }
 
     private static let mockSuggestionsJSON = """
-    [
+    {"items":[
       {"name":"チキンカレー","description":"スパイシーで香り豊かな本格カレー。ご飯との相性が抜群です。"},
       {"name":"トマトパスタ","description":"フレッシュトマトとバジルのシンプルなパスタ。さっぱりとした風味が絶品。"},
       {"name":"チャーハン","description":"卵とネギを使った香ばしい炒飯。短時間で作れる満足の一品。"},
       {"name":"鶏の唐揚げ定食","description":"ジューシーな唐揚げにご飯と味噌汁を添えた定番定食。"},
       {"name":"焼き餃子","description":"ニラと豚肉たっぷりの手作り餃子。パリッとした焼き目が食欲をそそります。"}
-    ]
+    ]}
     """
 
     private static let mockRecipeJSON = """

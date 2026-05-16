@@ -99,9 +99,9 @@ final class MealSuggestionViewModel {
         必須食材: \(mustUseText)
         気分: \(moodText)
 
-        以下のJSON配列**のみ**を返してください。
-        [{"name":"料理名","description":"1〜2文の説明"}]
-        要素は必ず5つ。
+        以下のJSONオブジェクト**のみ**を返してください。
+        {"items":[{"name":"料理名","description":"1〜2文の説明"}]}
+        itemsは必ず5つの要素にしてください。
         """
     }
 
@@ -121,10 +121,16 @@ final class MealSuggestionViewModel {
     // MARK: - レスポンスパース
 
     private func parseMenuSuggestions(from text: String) throws -> [MenuSuggestion] {
-        let json = extractJSON(from: text, kind: .array)
-        guard let data = json.data(using: .utf8) else {
-            throw GeminiError.emptyResponse
+        // {"items":[...]} 形式を優先、フォールバックで裸の配列も受け付ける
+        let objJson = extractJSON(from: text, kind: .object)
+        if let data = objJson.data(using: .utf8) {
+            struct Wrapper: Decodable { let items: [MenuSuggestion] }
+            if let wrapped = try? JSONDecoder().decode(Wrapper.self, from: data) {
+                return wrapped.items
+            }
         }
+        let arrJson = extractJSON(from: text, kind: .array)
+        guard let data = arrJson.data(using: .utf8) else { throw GeminiError.emptyResponse }
         return try JSONDecoder().decode([MenuSuggestion].self, from: data)
     }
 

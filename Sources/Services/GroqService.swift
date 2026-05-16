@@ -28,9 +28,13 @@ struct GroqService: AIService {
 
         let body: [String: Any] = [
             "model": Self.selectedModelName,
-            "messages": [["role": "user", "content": prompt]],
+            "messages": [
+                ["role": "system", "content": "You are a helpful assistant. Always respond with valid JSON only, no markdown, no explanation."],
+                ["role": "user", "content": prompt]
+            ],
             "max_tokens": maxOutputTokens,
-            "temperature": 0.9
+            "temperature": 0.9,
+            "response_format": ["type": "json_object"]
         ]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
