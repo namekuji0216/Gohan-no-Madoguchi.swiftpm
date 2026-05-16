@@ -132,33 +132,41 @@ struct SettingsView: View {
     private var modelSection: some View {
         Section {
             if selectedProvider == .gemini {
-                Picker("モデル", selection: $selectedGeminiModelRaw) {
-                    ForEach(GeminiModel.allCases) { model in
-                        modelRow(name: model.displayName, note: model.note)
-                            .tag(model.rawValue)
+                ForEach(GeminiModel.allCases) { model in
+                    modelRow(label: model.displayName, note: model.note,
+                             isSelected: selectedGeminiModelRaw == model.rawValue) {
+                        selectedGeminiModelRaw = model.rawValue
                     }
                 }
-                .pickerStyle(.inline)
-                .labelsHidden()
             } else {
-                Picker("モデル", selection: $selectedGroqModelRaw) {
-                    ForEach(GroqModel.allCases) { model in
-                        modelRow(name: model.displayName, note: model.note)
-                            .tag(model.rawValue)
+                ForEach(GroqModel.allCases) { model in
+                    modelRow(label: model.displayName, note: model.note,
+                             isSelected: selectedGroqModelRaw == model.rawValue) {
+                        selectedGroqModelRaw = model.rawValue
                     }
                 }
-                .pickerStyle(.inline)
-                .labelsHidden()
             }
         } header: {
             Label("使用モデル", systemImage: "sparkles")
         }
     }
 
-    private func modelRow(name: String, note: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(name)
-            Text(note).font(.caption).foregroundStyle(.secondary)
+    private func modelRow(label: String, note: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label)
+                        .foregroundStyle(.primary)
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .foregroundStyle(.tint)
+                }
+            }
         }
     }
 
