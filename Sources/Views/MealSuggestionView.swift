@@ -5,9 +5,11 @@ struct MealSuggestionView: View {
     @Query(sort: \PantryItem.registeredAt) private var pantryItems: [PantryItem]
     @State private var viewModel = MealSuggestionViewModel()
     @State private var showingRecipe = false
-    @AppStorage("geminiAPIKey") private var savedAPIKey = ""
+    @AppStorage("geminiAPIKey")       private var geminiKey = ""
+    @AppStorage("groqAPIKey")         private var groqKey = ""
+    @AppStorage("selectedAIProvider") private var selectedProvider = ""
 
-    private var isAPIKeyConfigured: Bool { GeminiService.isAPIKeyConfigured }
+    private var isAPIKeyConfigured: Bool { AIServiceFactory.isAPIKeyConfigured }
 
     var body: some View {
         NavigationStack {

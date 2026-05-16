@@ -29,7 +29,7 @@ enum GeminiError: LocalizedError {
     }
 }
 
-struct GeminiService {
+struct GeminiService: AIService {
     // デバッグ時は true にして API を使わずモックデータを返す
     static var isDebugMode = false
 
@@ -87,7 +87,7 @@ struct GeminiService {
 
     // MARK: - モックデータ
 
-    private static func mockJSON(for prompt: String) -> String {
+    static func mockJSON(for prompt: String) -> String {
         if prompt.contains("JSON配列") || prompt.contains("5つ") {
             return mockSuggestionsJSON
         } else if prompt.contains("不足栄養素") {

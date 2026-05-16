@@ -15,7 +15,6 @@ final class MealSuggestionViewModel {
     var errorMessage: String?
     var rateLimitCountdown: Int? = nil
 
-    private let service = GeminiService()
     private var countdownTask: Task<Void, Never>?
 
     // MARK: - 提案生成（5案）
@@ -27,7 +26,7 @@ final class MealSuggestionViewModel {
 
         do {
             let prompt = buildSuggestionPrompt(pantryItems: pantryItems)
-            let raw = try await service.send(prompt: prompt, maxOutputTokens: 512)
+            let raw = try await AIServiceFactory.make().send(prompt: prompt, maxOutputTokens: 512)
             suggestions = try parseMenuSuggestions(from: raw)
         } catch let e as GeminiError {
             errorMessage = e.errorDescription
@@ -49,7 +48,7 @@ final class MealSuggestionViewModel {
 
         do {
             let prompt = buildRecipePrompt(dishName: suggestion.name, pantryItems: pantryItems)
-            let raw = try await service.send(prompt: prompt, maxOutputTokens: 1024)
+            let raw = try await AIServiceFactory.make().send(prompt: prompt, maxOutputTokens: 1024)
             detailedRecipe = try parseDetailedRecipe(from: raw)
         } catch let e as GeminiError {
             errorMessage = e.errorDescription

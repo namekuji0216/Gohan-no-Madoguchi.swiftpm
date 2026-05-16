@@ -4,9 +4,11 @@ import SwiftData
 struct NutritionView: View {
     @Query(sort: \RecipeHistory.createdAt, order: .reverse) private var allRecipes: [RecipeHistory]
     @State private var viewModel = NutritionViewModel()
-    @AppStorage("geminiAPIKey") private var savedAPIKey = ""
+    @AppStorage("geminiAPIKey")       private var geminiKey = ""
+    @AppStorage("groqAPIKey")         private var groqKey = ""
+    @AppStorage("selectedAIProvider") private var selectedProvider = ""
 
-    private var isAPIKeyConfigured: Bool { GeminiService.isAPIKeyConfigured }
+    private var isAPIKeyConfigured: Bool { AIServiceFactory.isAPIKeyConfigured }
 
     private var recentRecipes: [RecipeHistory] {
         let cutoff = Calendar.current.date(byAdding: .day, value: -14, to: .now)!

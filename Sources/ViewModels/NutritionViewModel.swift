@@ -8,7 +8,6 @@ final class NutritionViewModel {
     var errorMessage: String?
     var rateLimitCountdown: Int? = nil
 
-    private let service = GeminiService()
     private var countdownTask: Task<Void, Never>?
 
     func analyze(recipes: [RecipeHistory]) async {
@@ -23,7 +22,7 @@ final class NutritionViewModel {
 
         do {
             let prompt = buildPrompt(recipes: recipes)
-            let raw = try await service.send(prompt: prompt, maxOutputTokens: 1024)
+            let raw = try await AIServiceFactory.make().send(prompt: prompt, maxOutputTokens: 1024)
             analysis = try parseAnalysis(from: raw)
         } catch let e as GeminiError {
             errorMessage = e.errorDescription
