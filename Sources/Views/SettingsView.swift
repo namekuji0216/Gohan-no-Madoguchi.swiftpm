@@ -2,9 +2,14 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("geminiAPIKey") private var savedKey = ""
+    @AppStorage("selectedGeminiModel") private var selectedModelRaw = GeminiModel.flash20.rawValue
     @State private var inputKey = ""
     @State private var isKeyVisible = false
     @State private var showSavedBanner = false
+
+    private var selectedModel: GeminiModel {
+        GeminiModel(rawValue: selectedModelRaw) ?? .flash20
+    }
 
     private var isConfigured: Bool {
         !effectiveKey.isEmpty && effectiveKey != "YOUR_GEMINI_API_KEY_HERE"
@@ -20,6 +25,7 @@ struct SettingsView: View {
         NavigationStack {
             Form {
                 apiKeySection
+                modelSection
                 debugSection
                 infoSection
             }
@@ -89,6 +95,31 @@ struct SettingsView: View {
             }
             .font(.caption)
             .padding(.top, 4)
+        }
+    }
+
+    // MARK: - モデル選択セクション
+
+    private var modelSection: some View {
+        Section {
+            Picker("モデル", selection: $selectedModelRaw) {
+                ForEach(GeminiModel.allCases) { model in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.displayName)
+                        Text(model.note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .tag(model.rawValue)
+                }
+            }
+            .pickerStyle(.inline)
+            .labelsHidden()
+        } header: {
+            Label("使用モデル", systemImage: "cpu")
+        } footer: {
+            Text("現在: \(selectedModel.displayName)（\(selectedModel.note)）")
+                .font(.caption)
         }
     }
 

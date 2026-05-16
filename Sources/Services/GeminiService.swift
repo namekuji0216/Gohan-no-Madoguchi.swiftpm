@@ -33,8 +33,6 @@ struct GeminiService {
     // デバッグ時は true にして API を使わずモックデータを返す
     static var isDebugMode = false
 
-    private static let modelName = "gemini-2.0-flash"
-
     // UserDefaults を優先し、未設定なら Secrets.swift にフォールバック
     static var effectiveAPIKey: String {
         let stored = (UserDefaults.standard.string(forKey: "geminiAPIKey") ?? "")
@@ -45,6 +43,10 @@ struct GeminiService {
     static var isAPIKeyConfigured: Bool {
         let key = effectiveAPIKey
         return !key.isEmpty && key != "YOUR_GEMINI_API_KEY_HERE"
+    }
+
+    static var selectedModelName: String {
+        UserDefaults.standard.string(forKey: "selectedGeminiModel") ?? GeminiModel.flash20.rawValue
     }
 
     func send(prompt: String, maxOutputTokens: Int = 1024) async throws -> String {
@@ -59,7 +61,7 @@ struct GeminiService {
         }
 
         let config = GenerationConfig(temperature: 0.9, maxOutputTokens: maxOutputTokens)
-        let model = GenerativeModel(name: Self.modelName, apiKey: apiKey, generationConfig: config)
+        let model = GenerativeModel(name: Self.selectedModelName, apiKey: apiKey, generationConfig: config)
 
         do {
             let response = try await model.generateContent(prompt)
