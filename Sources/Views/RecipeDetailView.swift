@@ -157,9 +157,8 @@ struct RecipeDetailView: View {
         )
         modelContext.insert(history)
         saved = true
-        Task {
+        Task { @MainActor in
             try? await Task.sleep(for: .milliseconds(800))
-            viewModel.clearRecipe()
             dismiss()
         }
     }

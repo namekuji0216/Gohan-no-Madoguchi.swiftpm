@@ -29,9 +29,7 @@ struct MealSuggestionView: View {
             }
             .navigationTitle("献立提案")
             .navigationDestination(isPresented: $showingRecipe) {
-                if viewModel.selectedSuggestion != nil {
-                    RecipeDetailView(viewModel: viewModel, pantryItems: pantryItems)
-                }
+                RecipeDetailView(viewModel: viewModel, pantryItems: pantryItems)
             }
             .onChange(of: showingRecipe) { _, isShowing in
                 if !isShowing { viewModel.clearRecipe() }
